@@ -1,0 +1,104 @@
+-- extension uuid
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- tables
+CREATE TABLE users(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  username VARCHAR(100) UNIQUE NOT NULL,
+  name VARCHAR(255) NOT NULL,
+  avatar TEXT DEFAULT NULL,
+  status VARCHAR(20) DEFAULT 'ACTIVE',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+-- table category help to organize products
+CREATE TABLE category(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(100) NOT NULL,
+  description TEXT DEFAULT NULL,
+  status VARCHAR(20) DEFAULT 'ACTIVE',
+  identifier VARCHAR(50) UNIQUE NOT NULL,
+  parent_id UUID DEFAULT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_category_parent FOREIGN KEY (parent_id) REFERENCES category(id) ON DELETE
+  SET NULL
+);
+CREATE TABLE product(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(255) NOT NULL,
+  description TEXT,
+  sku VARCHAR(100) UNIQUE NOT NULL,
+  price DECIMAL(10, 4) NOT NULL,
+  cost_price DECIMAL(10, 4) NOT NULL,
+  avatar TEXT DEFAULT NULL,
+  status VARCHAR(20) DEFAULT 'ACTIVE',
+  created_by UUID NOT NULL,
+  category_id UUID DEFAULT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_product_author FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_product_category FOREIGN KEY (category_id) REFERENCES category(id) ON DELETE
+  SET NULL
+);
+CREATE TABLE investory (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  product_id UUID NOT NULL,
+  quantity INTEGER NOT NULL DEFAULT 0,
+  last_restock_date TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_inventory_product FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE RESTRICT
+);
+CREATE TABLE inventory_history(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  inventory_id UUID NOT NULL,
+  previous_quantity INTEGER NOT NULL,
+  new_quantity INTEGER NOT NULL,
+  change_reason VARCHAR(100) NOT NULL,
+  changed_by UUID NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_inventory_history_inventory FOREIGN KEY (inventory_id) REFERENCES investory(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_inventory_history_user FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE RESTRICT
+);
+CREATE TABLE sales_channel(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name VARCHAR(100) NOT NULL,
+  description TEXT,
+  status VARCHAR(20) DEFAULT 'ACTIVE',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE orders(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_number VARCHAR(100) UNIQUE NOT NULL,
+  channel_id UUID NOT NULL,
+  order_date TIMESTAMP WITH TIME ZONE NOT NULL,
+  total_amount DECIMAL(12, 4) NOT NULL,
+  tax_amount DECIMAL(10, 4) NOT NULL DEFAULT 0,
+  shipping_amount DECIMAL(10, 4) NOT NULL DEFAULT 0,
+  discount_amount DECIMAL(10, 4) NOT NULL DEFAULT 0,
+  status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+  customer_name VARCHAR(255),
+  customer_email VARCHAR(255),
+  shipping_address TEXT,
+  billing_address TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_orders_channel FOREIGN KEY (channel_id) REFERENCES sales_channel(id) ON DELETE RESTRICT
+);
+CREATE TABLE order_items(
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  order_id UUID NOT NULL,
+  product_id UUID,
+  quantity INTEGER NOT NULL,
+  unit_price DECIMAL(10, 4) NOT NULL,
+  subtotal DECIMAL(14, 4) NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_order_items_order FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE RESTRICT,
+  CONSTRAINT fk_order_items_product FOREIGN KEY (product_id) REFERENCES product(id) ON DELETE
+  SET NULL
+);
